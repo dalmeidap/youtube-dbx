@@ -1,34 +1,12 @@
 import fs from 'fs';
 import { Dropbox } from 'dropbox';
+import eventEmitter from './events.js';
 
 const UPLOAD_FILE_SIZE_LIMIT = 150 * 1024 * 1024;
 
 let dropBox;
 export const initDropBoxClient = (accessToken) => {
     dropBox = new Dropbox({ accessToken: accessToken });
-};
-
-export const upload = async ({ channel, file, title, extension }) => {
-    const contents = fs.readFileSync(file);
-    const fileSize = Buffer.byteLength(contents);
-    const filePath = `/youtube/${channel}/${title}.${extension}`;
-
-    try {
-        let dropBoxPath;
-        if (fileSize < UPLOAD_FILE_SIZE_LIMIT) {
-            // File is smaller than 150 MB - use filesUpload API
-            dropBoxPath = await uploadFile(filePath, contents);
-        } else {
-            dropBoxPath = await uploadFileChunks(filePath, contents);
-        }
-        console.info(
-            `\n[${getFileSize(fileSize)}] - Uploaded to: ${dropBoxPath}`
-        );
-
-        return true;
-    } catch (e) {
-        return false;
-    }
 };
 
 const getFileSize = (fileSize) => {
@@ -43,22 +21,41 @@ const getFileSize = (fileSize) => {
     return Math.round(fSize * 100) / 100 + ' ' + fSExt[i];
 };
 
+export const upload = async ({ channel, file, title, extension }) => {
+    const contents = fs.readFileSync(file);
+    const fileSize = Buffer.byteLength(contents);
+    const filePath = `/youtube/${channel}/${title}.${extension}`;
+    const fileSizeStr = getFileSize(fileSize);
+
+    let dropBoxPath;
+    if (fileSize < UPLOAD_FILE_SIZE_LIMIT) {
+        // File is smaller than 150 MB - use filesUpload API
+        dropBoxPath = await uploadFile(filePath, contents, fileSizeStr);
+    } else {
+        dropBoxPath = await uploadFileChunks(filePath, contents, fileSizeStr);
+    }
+};
+
 // for files smaller than 150 MB
-const uploadFile = async (path, contents) => {
+const uploadFile = async (path, contents, fileSizeStr) => {
     try {
         const resultUpload = await dropBox.filesUpload({
             path,
             contents,
         });
-        return resultUpload.result.path_display;
+
+        eventEmitter.emit(
+            'uploaded',
+            resultUpload.result.path_display,
+            fileSizeStr
+        );
     } catch (e) {
         console.error(`Dropbox [uploadFile] -> ${e}`);
-        throw new Error('An error occurred');
     }
 };
 
 // for files bigger than 150 MB
-const uploadFileChunks = async (path, contents) => {
+const uploadFileChunks = async (path, contents, fileSizeStr) => {
     const fileSize = Buffer.byteLength(contents);
     // 8MB - Dropbox JavaScript API suggested chunk size
     const maxBlob = 12 * 1024 * 1024;
@@ -115,9 +112,12 @@ const uploadFileChunks = async (path, contents) => {
     }, Promise.resolve());
 
     task.then(function (response) {
-        return response.result.path_display;
+        eventEmitter.emit(
+            'uploaded',
+            response.result.path_display,
+            fileSizeStr
+        );
     }).catch(function (e) {
         console.error(`Dropbox [uploadFileChunks] -> ${e}`);
-        throw new Error('An error occurred');
     });
 };
