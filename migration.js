@@ -9,8 +9,8 @@ import CHANNELS from './channels.js';
 
 // get all videos of specific channel
 async function downloadChannelVideos(channel) {
-    let indexItems = 1;
-    const playlist = await ytpl(channel.youtubeId, { limit: 3 }); // just one to test
+    let indexItems = 0;
+    const playlist = await ytpl(channel.youtubeId, { limit: 4 }); // just one to test
 
     const metadata = {
         author: playlist.author.name,
@@ -25,7 +25,7 @@ async function downloadChannelVideos(channel) {
         const pathVideoDownloaded = `./${title}.mkv`;
 
         // upload to DropBox
-        console.log('\nUploading...');
+        console.log(`\n${indexItems+1}/${metadata.items.length} Uploading...`);
         upload({
             title: title,
             channel: channel.name,
@@ -35,22 +35,19 @@ async function downloadChannelVideos(channel) {
     });
 
     // when video is uploaded to dropbox, delete it locally and mark as uploaded in DB
-    eventEmitter.on('uploaded', (dropBoxPath, fileSize) => {
-        console.info(`  [${fileSize}] - Done: ${dropBoxPath}`);
+    eventEmitter.on('uploaded', (dropBoxPath, fileSize, videoData) => {
+        console.info(`[${fileSize}] - Done: ${dropBoxPath}`);
 
         // delete video locally and mark as uploaded in DB
-        fs.unlinkSync(pathVideoDownloaded);
-
-        // mark as uploaded in DB
-        indexItems++;
+        fs.unlinkSync(videoData.file);
 
         // finish
-        if (indexItems === metadata.totalItems) {
-            console.info('\n\nMigration finished.');
+        if (indexItems + 1 === metadata.items.length) {
+            console.info('\n\n🎉 Migration finished.');
             process.exit(0); // finish process
         }
 
-        // pass to next video
+        indexItems++;
         const nextVideo = metadata.items[indexItems];
         console.log('\n- Downloading:', nextVideo.title);
         downloadVideo({
@@ -93,7 +90,7 @@ async function downloadChannelVideos(channel) {
                 return true;
             },
             initial:
-                'sl.BhDzyh3ptNkBDRkvOVmK9HOp6zwVxFsF-9BK5SzPsbzkGqkMKreAftNo-V8Wm7X32tt8oh3z64U59YFlP_nq4HJR-V_JtFxbWRwPWmEUqsufstf63Ydi7KRUKnY_sUYznxq1cXGKf-0p',
+                'sl.BhBCgocli4VOP13whk7WGr4qkBnwenlOlYae_2DdZz5P58TjuX7LcNRTCnV-jeHPqKT3aemSSYRdWxvThTe8TaVfYZ5flMR53VYHkfRHNJflNW62AYvIa8O5x6O941jpIf_i0CPQc2N5',
         },
         {
             type: 'select',
