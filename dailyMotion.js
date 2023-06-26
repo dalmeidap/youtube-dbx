@@ -4,7 +4,7 @@ import fs from 'fs';
 
 // generate access token on DailyMotion Developer Tools
 // https://developers.dailymotion.com/tools/
-const ACCESS_TOKEN = 'eWRGVVAAEUB1FCMzSDpAKxE9Cnt4YUA-BQ9WVBUGLR8S';
+const ACCESS_TOKEN = '';
 const BASE_URL = 'https://api.dailymotion.com';
 
 export const uploadVideo = async (filePath, channelId, metadata) => {

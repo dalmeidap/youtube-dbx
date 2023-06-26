@@ -1,12 +1,12 @@
 import fs from 'fs';
 import { Dropbox } from 'dropbox';
 
-// generate an access token
 const UPLOAD_FILE_SIZE_LIMIT = 150 * 1024 * 1024;
-const ACCESS_TOKEN =
-    'sl.Bg6Krde8nw43_5W1noA7P7xWL-6NTa9XtE-ylHhyDGafkhUoyUyhXr9AZfk35ytF7UxZjTJKa74oiI7R5gbGCwlouUD1HW9ktWDFnrFW8ZWmfKu58EF0yRJUoXwkDiOqel5vxGm5hkTw';
 
-const dropBox = new Dropbox({ accessToken: ACCESS_TOKEN });
+let dropBox;
+export const initDropBoxClient = (accessToken) => {
+    dropBox = new Dropbox({ accessToken: accessToken });
+};
 
 export const upload = async ({ channel, file, title, extension }) => {
     const contents = fs.readFileSync(file);
