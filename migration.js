@@ -2,6 +2,7 @@ import fs from 'fs';
 import ytpl from 'ytpl';
 import prompts from 'prompts';
 
+import eventEmitter from './events.js';
 import downloadVideo from './downloader.js';
 import { initDropBoxClient, upload } from './dropbox.js';
 import CHANNELS from './channels.js';
@@ -20,16 +21,23 @@ async function downloadChannelVideos(channel) {
     const item = metadata.items[1];
 
     // get title, description and index, save on DB
-    // upload to daily motion and mark video as migrated
     console.log('\n- Downloading:', item.title);
-    downloadVideo(item.url, item.title);
+    downloadVideo({
+        index: item.index,
+        id: item.id,
+        url: item.url,
+        title: item.title,
+        channelId: metadata.channelId,
+    });
 
-    // check if video exist
-    const pathVideoDownloaded = `./${item.title}.mkv`;
-    if (fs.existsSync(pathVideoDownloaded)) {
+    // when video is downloaded, delete it locally and mark as uploaded in DB
+    eventEmitter.on('downloaded', async (video) => {
+        const { id, title } = video;
+        // check if video exist
+        const pathVideoDownloaded = `./${title}.mkv`;
         // upload to DropBox
-        const isSuccess = await upload({
-            title: item.title,
+        const isSuccess = upload({
+            title: title,
             channel: channel.name,
             file: pathVideoDownloaded,
             extension: 'mkv',
@@ -39,7 +47,7 @@ async function downloadChannelVideos(channel) {
         if (isSuccess) {
             fs.unlinkSync(pathVideoDownloaded);
         }
-    }
+    });
 }
 
 (async () => {
@@ -53,6 +61,14 @@ async function downloadChannelVideos(channel) {
             type: 'text',
             name: 'accessToken',
             message: 'Dropbox - Access Token',
+            validate: (value) => {
+                const token = value.trim();
+                if (token.trim() === '' || !token.startsWith('sl.')) {
+                    return `You have to provide a valid access token`;
+                }
+
+                return true;
+            },
         },
         {
             type: 'select',

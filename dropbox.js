@@ -22,7 +22,7 @@ export const upload = async ({ channel, file, title, extension }) => {
             dropBoxPath = await uploadFileChunks(filePath, contents);
         }
         console.info(
-            `[${getFileSize(fileSize)}] - File uploaded to: ${dropBoxPath}`
+            `\n[${getFileSize(fileSize)}] - Uploaded to: ${dropBoxPath}`
         );
 
         return true;

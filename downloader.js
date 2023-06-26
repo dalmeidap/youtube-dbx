@@ -7,16 +7,25 @@
  * https://github.com/fent/node-ytdl-core/blob/cc6720f9387088d6253acc71c8a49000544d4d2a/example/ffmpeg.js
  */
 
+import fs from 'fs';
 import cp from 'child_process';
 import readline from 'readline';
 
 import ytdl from 'ytdl-core';
 import ffmpeg from 'ffmpeg-static';
+import eventEmitter from './events.js';
 
 /*
  * Typically 1080p or better videos do not have audio encoded with it. The audio must be downloaded separately and merged
  */
-const downloadVideo = (urlFile, output) => {
+const downloadVideo = (videoData) => {
+    const { url: urlFile, title: output } = videoData;
+
+    // remove temp file if already exist
+    if (fs.existsSync(`${output}.mkv`)) {
+        fs.unlinkSync(`${output}.mkv`);
+    }
+
     const tracker = {
         start: Date.now(),
         audio: { downloaded: 0, total: Infinity },
@@ -85,10 +94,11 @@ const downloadVideo = (urlFile, output) => {
     );
 
     ffmpegProcess.on('close', () => {
-        console.log('done');
         // Cleanup
         process.stdout.write('\n\n\n\n');
         clearInterval(progressbarHandle);
+        // emit event that download is done
+        eventEmitter.emit('downloaded', videoData);
     });
 
     // Link streams
