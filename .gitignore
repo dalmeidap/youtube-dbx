@@ -1,0 +1,5 @@
+/node_modules
+/videoSamples
+*.mkv
+*.mp4
+.DS_Store
