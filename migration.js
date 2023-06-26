@@ -1,20 +1,14 @@
 import fs from 'fs';
 import ytpl from 'ytpl';
+import prompts from 'prompts';
 
 import downloadVideo from './downloader.js';
-import { upload } from './dropbox.js';
-
-const channels = {
-    CYCLE_WORLD: {
-        name: 'cycleworld',
-        youtubeId: 'UCRYSnygAnAZApkVm-LwTOkg',
-    },
-    // add others channels
-};
+import { initDropBoxClient, upload } from './dropbox.js';
+import CHANNELS from './channels.js';
 
 // get all videos of specific channel
 async function downloadChannelVideos(channel) {
-    const playlist = await ytpl(channel.youtubeId, { limit: 1 }); // just one to test
+    const playlist = await ytpl(channel.youtubeId, { limit: 2 }); // just one to test
 
     const metadata = {
         author: playlist.author.name,
@@ -23,17 +17,15 @@ async function downloadChannelVideos(channel) {
         items: playlist.items,
     };
 
-    const item = metadata.items[0];
+    const item = metadata.items[1];
 
     // get title, description and index, save on DB
     // upload to daily motion and mark video as migrated
-    console.log('Downloading:', item.title);
+    console.log('\n- Downloading:', item.title);
     downloadVideo(item.url, item.title);
 
     // check if video exist
     const pathVideoDownloaded = `./${item.title}.mkv`;
-    console.log(pathVideoDownloaded);
-    console.log(fs.existsSync(pathVideoDownloaded));
     if (fs.existsSync(pathVideoDownloaded)) {
         // upload to DropBox
         const isSuccess = await upload({
@@ -50,5 +42,38 @@ async function downloadChannelVideos(channel) {
     }
 }
 
-// start download of videos
-downloadChannelVideos(channels.CYCLE_WORLD);
+(async () => {
+    console.info(
+        'To generate a Dropbox Access Token, go to Dropbox Developers (https://www.dropbox.com/developers)\n' +
+            'My apps -> Youtube Migration -> Generate access token \n'
+    );
+
+    const response = await prompts([
+        {
+            type: 'text',
+            name: 'accessToken',
+            message: 'Dropbox - Access Token',
+        },
+        {
+            type: 'select',
+            name: 'youtubeChannel',
+            message: 'Youtube Channel',
+            choices: Object.keys(CHANNELS).map((channelId) => {
+                const channel = CHANNELS[channelId];
+                return {
+                    title: channel.label,
+                    description: channel.label,
+                    value: channel.id,
+                };
+            }),
+            initial: 0,
+        },
+    ]);
+
+    // init dropbox client with token provided
+    const { accessToken, youtubeChannel } = response;
+    initDropBoxClient(accessToken);
+
+    // start download videos from youtube channel
+    downloadChannelVideos(CHANNELS[youtubeChannel]);
+})();
