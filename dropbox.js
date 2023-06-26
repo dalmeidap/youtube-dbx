@@ -50,7 +50,8 @@ export const testConnection = async () => {
     }
 };
 
-export const upload = async ({ channel, file, title, extension }) => {
+export const upload = async (videoData) => {
+    const { channel, file, title, extension } = videoData;
     const contents = fs.readFileSync(file);
     const fileSize = Buffer.byteLength(contents);
     const filePath = `/youtube/${channel}/${title}.${extension}`;
@@ -58,14 +59,14 @@ export const upload = async ({ channel, file, title, extension }) => {
 
     if (fileSize < UPLOAD_FILE_SIZE_LIMIT) {
         // File is smaller than 150 MB - use filesUpload API
-        await uploadFile(filePath, contents, fileSizeStr);
+        await uploadFile(filePath, contents, fileSizeStr, videoData);
     } else {
-        await uploadFileChunks(filePath, contents, fileSizeStr);
+        await uploadFileChunks(filePath, contents, fileSizeStr, videoData);
     }
 };
 
 // for files smaller than 150 MB
-const uploadFile = async (path, contents, fileSizeStr) => {
+const uploadFile = async (path, contents, fileSizeStr, videoData) => {
     try {
         const resultUpload = await dropBox.filesUpload({
             path,
@@ -75,16 +76,26 @@ const uploadFile = async (path, contents, fileSizeStr) => {
         eventEmitter.emit(
             'uploaded',
             resultUpload.result.path_display,
-            fileSizeStr
+            fileSizeStr,
+            videoData
         );
     } catch (e) {
-        console.log(e);
+        if (e.status === 409) {
+            eventEmitter.emit(
+                'uploaded',
+                'Already uploaded',
+                fileSizeStr,
+                videoData
+            );
+            return;
+        }
+
         console.error(`Dropbox [uploadFile] -> ${e}`);
     }
 };
 
 // for files bigger than 150 MB
-const uploadFileChunks = async (path, contents, fileSizeStr) => {
+const uploadFileChunks = async (path, contents, fileSizeStr, videoData) => {
     const fileSize = Buffer.byteLength(contents);
     // 8MB - Dropbox JavaScript API suggested chunk size
     const maxBlob = 12 * 1024 * 1024;
@@ -130,7 +141,6 @@ const uploadFileChunks = async (path, contents, fileSizeStr) => {
                     autorename: true,
                     mute: false,
                 };
-                console.log(cursor, commit);
                 return dropBox.filesUploadSessionFinish({
                     cursor: cursor,
                     commit: commit,
@@ -144,9 +154,19 @@ const uploadFileChunks = async (path, contents, fileSizeStr) => {
         eventEmitter.emit(
             'uploaded',
             response.result.path_display,
-            fileSizeStr
+            fileSizeStr,
+            videoData
         );
     }).catch(function (e) {
+        if (e.status === 409) {
+            eventEmitter.emit(
+                'uploaded',
+                'Already uploaded',
+                fileSizeStr,
+                videoData
+            );
+            return;
+        }
         console.error(`Dropbox [uploadFileChunks] -> ${e}`);
     });
 };
