@@ -25,7 +25,9 @@ async function downloadChannelVideos(channel) {
         const pathVideoDownloaded = `./${title}.mkv`;
 
         // upload to DropBox
-        console.log(`\n${indexItems+1}/${metadata.items.length} Uploading...`);
+        console.log(
+            `\n${indexItems + 1}/${metadata.items.length} Uploading...`
+        );
         upload({
             title: title,
             channel: channel.name,
@@ -89,8 +91,7 @@ async function downloadChannelVideos(channel) {
 
                 return true;
             },
-            initial:
-                'sl.BhBCgocli4VOP13whk7WGr4qkBnwenlOlYae_2DdZz5P58TjuX7LcNRTCnV-jeHPqKT3aemSSYRdWxvThTe8TaVfYZ5flMR53VYHkfRHNJflNW62AYvIa8O5x6O941jpIf_i0CPQc2N5',
+            initial: '',
         },
         {
             type: 'select',
