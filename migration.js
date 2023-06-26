@@ -4,7 +4,7 @@ import prompts from 'prompts';
 
 import eventEmitter from './events.js';
 import downloadVideo from './downloader.js';
-import { initDropBoxClient, upload } from './dropbox.js';
+import { initDropBoxClient, testConnection, upload } from './dropbox.js';
 import CHANNELS from './channels.js';
 
 // get all videos of specific channel
@@ -36,7 +36,7 @@ async function downloadChannelVideos(channel) {
 
     // when video is uploaded to dropbox, delete it locally and mark as uploaded in DB
     eventEmitter.on('uploaded', (dropBoxPath, fileSize) => {
-        console.info(`\n[${fileSize}] - Uploaded to: ${dropBoxPath}`);
+        console.info(`  [${fileSize}] - Done: ${dropBoxPath}`);
 
         // delete video locally and mark as uploaded in DB
         fs.unlinkSync(pathVideoDownloaded);
@@ -112,9 +112,13 @@ async function downloadChannelVideos(channel) {
     ]);
 
     // init dropbox client with token provided
-    const { accessToken, youtubeChannel, limitDownloadsInParallel } = response;
+    const { accessToken, youtubeChannel } = response;
     initDropBoxClient(accessToken);
 
+    // test connection with DropBox
+    const isSuccess = await testConnection();
+    if (!isSuccess) return;
+
     // start download videos from youtube channel
-    downloadChannelVideos(CHANNELS[youtubeChannel], limitDownloadsInParallel);
+    downloadChannelVideos(CHANNELS[youtubeChannel]);
 })();

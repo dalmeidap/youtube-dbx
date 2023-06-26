@@ -21,18 +21,46 @@ const getFileSize = (fileSize) => {
     return Math.round(fSize * 100) / 100 + ' ' + fSExt[i];
 };
 
+// get list of files from root
+export const testConnection = async () => {
+    try {
+        await dropBox.filesListFolder({ path: '' });
+        return true;
+    } catch (e) {
+        console.log('\n');
+        switch (e.error.error['.tag']) {
+            case 'expired_access_token':
+                console.error(
+                    'Expired - DropBox access token, you need to generate a new one.'
+                );
+                break;
+            case 'invalid_access_token':
+                console.error(
+                    'Invalid - DropBox access token, you need to generate a valid one.'
+                );
+                break;
+            default:
+                console.error(
+                    'An error ocurred trying to connect with Dropbox.',
+                    e.error.error['.tag']
+                );
+                break;
+        }
+        return false;
+    }
+};
+
 export const upload = async ({ channel, file, title, extension }) => {
     const contents = fs.readFileSync(file);
     const fileSize = Buffer.byteLength(contents);
     const filePath = `/youtube/${channel}/${title}.${extension}`;
     const fileSizeStr = getFileSize(fileSize);
 
-    let dropBoxPath;
     if (fileSize < UPLOAD_FILE_SIZE_LIMIT) {
         // File is smaller than 150 MB - use filesUpload API
-        dropBoxPath = await uploadFile(filePath, contents, fileSizeStr);
+        await uploadFile(filePath, contents, fileSizeStr);
     } else {
-        dropBoxPath = await uploadFileChunks(filePath, contents, fileSizeStr);
+        await uploadFileChunks(filePath, contents, fileSizeStr);
     }
 };
 
@@ -50,6 +78,7 @@ const uploadFile = async (path, contents, fileSizeStr) => {
             fileSizeStr
         );
     } catch (e) {
+        console.log(e);
         console.error(`Dropbox [uploadFile] -> ${e}`);
     }
 };
